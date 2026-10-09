@@ -116,7 +116,7 @@
                         <div class="flex justify-between items-center flex-wrap gap-2">
                             <div>
                                 <h3 class="text-base font-semibold text-emerald-400">生成されたコマンド</h3>
-                                <p class="text-xs text-slate-400">`//1 X Y Z`, `//2 X Y Z`, `//s` による正確な絶対座標コード</p>
+                                <p class="text-xs text-slate-400">`/1 X Y Z`, `/2 X Y Z`, `/s` による正確な絶対座標コード</p>
                             </div>
                             <div class="flex gap-2">
                                 <button onclick="copyCommands()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">📋 コピー</button>
@@ -182,7 +182,7 @@
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg space-y-4 lg:col-span-2 flex flex-col justify-between">
                     <div>
                         <h3 class="text-base font-semibold text-emerald-400">生成された3D立体コマンド</h3>
-                        <p class="text-xs text-slate-400">`//1`, `//2`, `//s` を活用した立体構築コード</p>
+                        <p class="text-xs text-slate-400">`/1`, `/2`, `/s` を活用した立体構築コード</p>
                     </div>
                     <textarea id="shape-output" readonly class="w-full h-64 bg-slate-900 border border-slate-700 rounded-lg p-3 font-mono text-xs text-emerald-300 outline-none resize-none" placeholder="ここに生成された3Dコマンドが表示されます..."></textarea>
                     <div class="flex justify-between items-center">
@@ -199,7 +199,7 @@
                 <div class="flex justify-between items-center flex-wrap gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-emerald-400">ブロックパレット管理（追加・削除・編集）</h2>
-                        <p class="text-xs text-slate-400">MultiCraft公式の全ブロック（ご指定の除外ルールを完璧に反映した約135種）を網羅。ここから新しいブロックを追加したり削除できます。</p>
+                        <p class="text-xs text-slate-400">MultiCraft公式の全ブロック（約135種）を網羅。ここから新しいブロックを追加したり削除できます。</p>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="openAddBlockModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition">+ 新規ブロック追加</button>
@@ -258,7 +258,6 @@
             colors15.forEach(c => list.push({ id: `carved_${c}`, name: `彫刻 (${c})`, color: getColorHex(c) }));
             colors15.forEach(c => list.push({ id: `hardened_clay:${c}`, name: `堅焼き粘土 (${c})`, color: getColorHex(c) }));
             
-            // Quartz excluding brown, cyan, dark_green, dark_grey, magenta, orange, red, white
             const quartzExcluded = ['brown', 'cyan', 'dark_green', 'dark_grey', 'magenta', 'orange', 'red', 'white'];
             colors15.filter(c => !quartzExcluded.includes(c)).forEach(c => {
                 list.push({ id: `quartz_block_${c}`, name: `クォーツ (${c})`, color: getColorHex(c) });
@@ -266,7 +265,6 @@
 
             colors15.forEach(c => list.push({ id: `wool:${c}`, name: `羊毛 (${c})`, color: getColorHex(c) }));
 
-            // Terracotta excluding grey, orange, pink
             const terraExcluded = ['grey', 'orange', 'pink'];
             colors15.filter(c => !terraExcluded.includes(c)).forEach(c => {
                 list.push({ id: `terracotta_${c}`, name: `テラコッタ (${c})`, color: getColorHex(c) });
@@ -416,24 +414,24 @@
             let commands = [];
 
             if (type === 'box') {
-                commands.push(`//1 0 0 0`); commands.push(`//2 ${w-1} ${h-1} ${d-1}`); commands.push(`//s ${blockId}`);
+                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
             } else if (type === 'hollow_box') {
-                commands.push(`//1 0 0 0`); commands.push(`//2 ${w-1} ${h-1} ${d-1}`); commands.push(`//s ${blockId}`);
+                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
                 if (w > 2 && h > 2 && d > 2) {
-                    commands.push(`//1 1 1 1`); commands.push(`//2 ${w-2} ${h-2} ${d-2}`); commands.push(`//s air`);
+                    commands.push(`/1 1 1 1`); commands.push(`/2 ${w-2} ${h-2} ${d-2}`); commands.push(`/s air`);
                 }
             } else if (type === 'sphere') {
-                commands.push(`//1 0 0 0`); commands.push(`//2 ${w-1} ${h-1} ${d-1}`); commands.push(`//sphere ${blockId}`);
+                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/sphere ${blockId}`);
             } else if (type === 'cylinder') {
-                commands.push(`//1 0 0 0`); commands.push(`//2 ${w-1} ${h-1} ${d-1}`); commands.push(`//cyl ${blockId}`);
+                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/cyl ${blockId}`);
             } else if (type === 'pyramid') {
                 for (let y = 0; y < h; y++) {
                     let sw = Math.max(1, w - Math.floor(y * (w / h)));
                     let sd = Math.max(1, d - Math.floor(y * (d / h)));
                     let off = Math.floor((w - sw) / 2);
-                    commands.push(`//1 ${off} ${y} ${off}`);
-                    commands.push(`//2 ${off + sw - 1} ${y} ${off + sd - 1}`);
-                    commands.push(`//s ${blockId}`);
+                    commands.push(`/1 ${off} ${y} ${off}`);
+                    commands.push(`/2 ${off + sw - 1} ${y} ${off + sd - 1}`);
+                    commands.push(`/s ${blockId}`);
                 }
             }
 
@@ -597,9 +595,9 @@
                         const y2 = origY;
                         const z2 = origZ + y + rh - 1;
 
-                        commands.push(`//1 ${x1} ${y1} ${z1}`);
-                        commands.push(`//2 ${x2} ${y2} ${z2}`);
-                        commands.push(`//s ${blockId}`);
+                        commands.push(`/1 ${x1} ${y1} ${z1}`);
+                        commands.push(`/2 ${x2} ${y2} ${z2}`);
+                        commands.push(`/s ${blockId}`);
                     } else {
                         const x1 = origX + x;
                         const y1 = origY + (h - (y + rh));
@@ -608,9 +606,9 @@
                         const y2 = origY + (h - 1 - y);
                         const z2 = origZ;
 
-                        commands.push(`//1 ${x1} ${y1} ${z1}`);
-                        commands.push(`//2 ${x2} ${y2} ${z2}`);
-                        commands.push(`//s ${blockId}`);
+                        commands.push(`/1 ${x1} ${y1} ${z1}`);
+                        commands.push(`/2 ${x2} ${y2} ${z2}`);
+                        commands.push(`/s ${blockId}`);
                     }
                 }
             }
@@ -666,4 +664,4 @@
         }
     </script>
 </body>
-</htm
+</html>
