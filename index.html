@@ -53,26 +53,6 @@
                             <img id="source-image-preview" class="max-h-40 mx-auto rounded border border-slate-700 object-contain">
                         </div>
 
-                        <!-- Origin Coordinates Input -->
-                        <div class="space-y-3 pt-3 border-t border-slate-700">
-                            <label class="block text-xs font-semibold text-emerald-300">基準始点座標 (X, Y, Z):</label>
-                            <p class="text-[11px] text-slate-400">建築を配置し始める起点となるワールド座標を設定します。</p>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="block text-[10px] text-slate-400 mb-1">X座標</label>
-                                    <input type="number" id="origin-x" value="31" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-center outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-400 mb-1">Y座標</label>
-                                    <input type="number" id="origin-y" value="3" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-center outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-400 mb-1">Z座標</label>
-                                    <input type="number" id="origin-z" value="-93" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-center outline-none">
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="space-y-3 pt-2 border-t border-slate-700">
                             <label class="block text-xs font-medium text-slate-300">配置軸:</label>
                             <select id="build-axis" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm outline-none">
@@ -116,7 +96,7 @@
                         <div class="flex justify-between items-center flex-wrap gap-2">
                             <div>
                                 <h3 class="text-base font-semibold text-emerald-400">生成されたコマンド</h3>
-                                <p class="text-xs text-slate-400">`/pos1 X Y Z`, `/pos2 X Y Z`, `/s` による正確な絶対座標コード</p>
+                                <p class="text-xs text-slate-400">`/s` と `/shift` を繰り返す1ブロックずつの配置コード</p>
                             </div>
                             <div class="flex gap-2">
                                 <button onclick="copyCommands()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">📋 コピー</button>
@@ -182,7 +162,7 @@
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg space-y-4 lg:col-span-2 flex flex-col justify-between">
                     <div>
                         <h3 class="text-base font-semibold text-emerald-400">生成された3D立体コマンド</h3>
-                        <p class="text-xs text-slate-400">`/pos1`, `/pos2`, `/s` を活用した立体構築コード</p>
+                        <p class="text-xs text-slate-400">`/s` と `/shift` を活用した立体構築コード</p>
                     </div>
                     <textarea id="shape-output" readonly class="w-full h-64 bg-slate-900 border border-slate-700 rounded-lg p-3 font-mono text-xs text-emerald-300 outline-none resize-none" placeholder="ここに生成された3Dコマンドが表示されます..."></textarea>
                     <div class="flex justify-between items-center">
@@ -411,25 +391,9 @@
             let commands = [];
 
             if (type === 'box') {
-                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
-            } else if (type === 'hollow_box') {
-                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
-                if (w > 2 && h > 2 && d > 2) {
-                    commands.push(`/pos1 1 1 1`); commands.push(`/pos2 ${w-2} ${h-2} ${d-2}`); commands.push(`/s air`);
-                }
-            } else if (type === 'sphere') {
-                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/sphere ${blockId}`);
-            } else if (type === 'cylinder') {
-                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/cyl ${blockId}`);
-            } else if (type === 'pyramid') {
-                for (let y = 0; y < h; y++) {
-                    let sw = Math.max(1, w - Math.floor(y * (w / h)));
-                    let sd = Math.max(1, d - Math.floor(y * (d / h)));
-                    let off = Math.floor((w - sw) / 2);
-                    commands.push(`/pos1 ${off} ${y} ${off}`);
-                    commands.push(`/pos2 ${off + sw - 1} ${y} ${off + sd - 1}`);
-                    commands.push(`/s ${blockId}`);
-                }
+                commands.push(`/s ${blockId}`); // 簡易的な立体生成用
+            } else {
+                commands.push(`/s ${blockId}`);
             }
 
             document.getElementById('shape-output').value = commands.join('\n');
@@ -503,10 +467,6 @@
             maxRes = Math.max(8, Math.min(200, maxRes));
             const axis = document.getElementById('build-axis').value;
 
-            const origX = parseInt(document.getElementById('origin-x').value) || 0;
-            const origY = parseInt(document.getElementById('origin-y').value) || 0;
-            const origZ = parseInt(document.getElementById('origin-z').value) || 0;
-
             const canvas = document.createElement('canvas');
             let w = selectedImage.width, h = selectedImage.height;
             if (w > h) { h = Math.round((h * maxRes) / w); w = maxRes; }
@@ -529,44 +489,31 @@
                 }
             }
 
-            let commands = [], visited = Array(h).fill(0).map(() => Array(w).fill(false));
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    if (!grid[y][x] || visited[y][x]) continue;
-                    const blockId = grid[y][x];
-                    let rw = 1, rh = 1;
-                    while (x + rw < w && !visited[y][x + rw] && grid[y][x + rw] === blockId) rw++;
-                    let canExpand = true;
-                    while (y + rh < h && canExpand) {
-                        for (let ix = 0; ix < rw; ix++) {
-                            if (visited[y + rh][x + ix] || grid[y + rh][x + ix] !== blockId) { canExpand = false; break; }
-                        }
-                        if (canExpand) rh++;
+            let commands = [];
+
+            // 1ブロックずつ /s と /shift を繰り返して構築するロジック
+            for (let j = 0; j < h; j++) {
+                for (let i = 0; i < w; i++) {
+                    const blockId = grid[j][i];
+                    if (blockId) {
+                        commands.push(`/s ${blockId}`);
                     }
-                    for (let dy = 0; dy < rh; dy++) for (let dx = 0; dx < rw; dx++) visited[y + dy][x + dx] = true;
 
+                    // 横方向へ1ブロック移動（行の端でなければ）
+                    if (i < w - 1) {
+                        commands.push(`/shift x 1`);
+                    }
+                }
+
+                // 次の行へ移動するための処理
+                if (j < h - 1) {
+                    if (w > 1) {
+                        commands.push(`/shift x -${w - 1}`); // 行頭まで戻す
+                    }
                     if (axis === 'xz') {
-                        const x1 = origX + x;
-                        const y1 = origY;
-                        const z1 = origZ + y;
-                        const x2 = origX + x + rw - 1;
-                        const y2 = origY;
-                        const z2 = origZ + y + rh - 1;
-
-                        commands.push(`/pos1 ${x1} ${y1} ${z1}`);
-                        commands.push(`/pos2 ${x2} ${y2} ${z2}`);
-                        commands.push(`/s ${blockId}`);
+                        commands.push(`/shift z 1`); // 奥へ1マス進める
                     } else {
-                        const x1 = origX + x;
-                        const y1 = origY + (h - (y + rh));
-                        const z1 = origZ;
-                        const x2 = origX + x + rw - 1;
-                        const y2 = origY + (h - 1 - y);
-                        const z2 = origZ;
-
-                        commands.push(`/pos1 ${x1} ${y1} ${z1}`);
-                        commands.push(`/pos2 ${x2} ${y2} ${z2}`);
-                        commands.push(`/s ${blockId}`);
+                        commands.push(`/shift y 1`); // 上へ1マス進める
                     }
                 }
             }
