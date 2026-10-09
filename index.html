@@ -12,17 +12,17 @@
         .tab-content.active { display: block; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+<body class="bg-slate-900 text-slate-100 min-h-screen relative">
 
-    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-50 px-4 py-3 shadow-md">
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 px-4 py-3 shadow-md">
         <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
             <h1 class="text-xl font-bold text-emerald-400 flex items-center gap-2">
                 🧱 MultiCraft WE 建築ジェネレーター
             </h1>
             <nav class="flex gap-2 flex-wrap">
-                <button onclick="switchTab('generator')" class="tab-btn px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium text-xs sm:text-sm transition hover:bg-emerald-500 active">画像変換 & ペースト</button>
-                <button onclick="switchTab('shape3d')" class="tab-btn px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-xs sm:text-sm transition hover:bg-slate-600">3D立体シェイプ</button>
-                <button onclick="switchTab('palette')" class="tab-btn px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-xs sm:text-sm transition hover:bg-slate-600">ブロックパレット管理</button>
+                <button onclick="switchTab('generator')" id="btn-tab-generator" class="tab-btn px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium text-xs sm:text-sm transition hover:bg-emerald-500 active">画像変換 & ペースト</button>
+                <button onclick="switchTab('shape3d')" id="btn-tab-shape3d" class="tab-btn px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-xs sm:text-sm transition hover:bg-slate-600">3D立体シェイプ</button>
+                <button onclick="switchTab('palette')" id="btn-tab-palette" class="tab-btn px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-xs sm:text-sm transition hover:bg-slate-600">ブロックパレット管理</button>
             </nav>
         </div>
     </header>
@@ -85,10 +85,13 @@
                     <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden flex flex-col">
                         <div class="bg-slate-750 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
                             <h3 class="text-sm font-semibold text-emerald-400">2D建築固定プレビュー</h3>
-                            <span class="text-xs text-slate-400">変換されたブロック構成の平面プレビュー</span>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-slate-400 hidden sm:inline">ホイール: 拡大縮小 / ドラッグ: 移動</span>
+                                <button onclick="resetPreviewTransform()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-slate-200">位置リセット</button>
+                            </div>
                         </div>
-                        <div class="w-full h-72 bg-slate-950 flex items-center justify-center p-4">
-                            <canvas id="preview-2d" class="max-w-full max-h-full object-contain border border-slate-800 shadow"></canvas>
+                        <div id="canvas-wrapper" class="w-full h-80 bg-slate-950 relative overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing">
+                            <canvas id="preview-2d" class="border border-slate-800 shadow transition-transform duration-75"></canvas>
                         </div>
                     </div>
 
@@ -99,10 +102,17 @@
                                 <p class="text-xs text-slate-400">`/s` と `/shift` を繰り返す1ブロックずつの配置コード</p>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="copyCommands()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">📋 コピー</button>
-                                <button onclick="downloadCommands()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">💾 保存</button>
+                                <button onclick="copyCommands()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">📋 全コピー</button>
+                                <button onclick="downloadCommands()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">💾 全保存</button>
                             </div>
                         </div>
+
+                        <!-- Split copy button container for >10,000 lines -->
+                        <div id="split-copy-container" class="hidden bg-slate-900/80 p-3 rounded-lg border border-emerald-500/30 space-y-2">
+                            <p class="text-xs font-semibold text-emerald-300">✂️ 1万行分割コピー（タップでクリップボードへコピー）:</p>
+                            <div id="split-buttons" class="flex flex-wrap gap-2"></div>
+                        </div>
+
                         <textarea id="command-output" readonly class="w-full h-48 bg-slate-900 border border-slate-700 rounded-lg p-3 font-mono text-xs text-emerald-300 outline-none resize-none" placeholder="ここに生成されたコマンドが表示されます..."></textarea>
                         <div class="flex justify-between text-xs text-slate-400">
                             <span id="cmd-count">行数: 0行</span>
@@ -217,6 +227,11 @@
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2 text-sm font-medium">
+        <span id="toast-msg">通知メッセージ</span>
+    </div>
+
     <!-- Application Script -->
     <script>
         const colors15 = ['black', 'blue', 'brown', 'cyan', 'dark_green', 'dark_grey', 'green', 'grey', 'magenta', 'orange', 'pink', 'red', 'violet', 'white', 'yellow'];
@@ -260,7 +275,7 @@
                 { id: 'cherry_blossom_tree', name: '桜の木', color: '#d8b4e2' },
                 { id: 'default:acacia_wood', name: 'アカシア原木', color: '#a86b32' },
                 { id: 'default:birch_wood', name: '白樺原木', color: '#ded6c5' },
-                { id: 'default:jungle_wood', name: 'ジャングル原木', color: '#5c4033' },
+                { id: 'jungletree', name: 'ジャングル原木', color: '#5c4033' },
                 { id: 'default:pine_wood', name: '松原木', color: '#4a3b2c' },
                 { id: 'wood', name: '木材', color: '#b08968' },
                 { id: 'cherry_blossom_wood', name: '桜の木材', color: '#e5b8be' },
@@ -299,14 +314,53 @@
             return list.concat(secondImageBlocks);
         }
 
+        // 初期化＆既存のLocalStorage内データのマイグレーション処理
         let currentPalette = JSON.parse(localStorage.getItem('multicraft_palette')) || buildDefaultPalette();
+        
+        // 旧ID(default:jungle_wood等)がローカルストレージに残っている場合は自動でjungletreeへ置換し重複を統合
+        currentPalette = currentPalette.map(item => {
+            if (item.id === 'default:jungle_wood' || item.id === 'default:jungle_tree') {
+                return { ...item, id: 'jungletree' };
+            }
+            return item;
+        });
+
+        const uniquePalette = [];
+        const seenIds = new Set();
+        for (const item of currentPalette) {
+            if (!seenIds.has(item.id)) {
+                seenIds.add(item.id);
+                uniquePalette.push(item);
+            }
+        }
+        currentPalette = uniquePalette;
+        localStorage.setItem('multicraft_palette', JSON.stringify(currentPalette));
+
         let selectedImage = null;
+        let generatedCommandLines = [];
+
+        // Preview Zoom & Pan State
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDraggingPreview = false;
+        let startX = 0, startY = 0;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderPaletteUI();
             populateShapeBlockSelect();
             setupPasteAndDrop();
+            setupCanvasInteraction();
         });
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -315,8 +369,8 @@
                 btn.classList.add('bg-slate-700', 'text-slate-300');
             });
             document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.remove('bg-slate-700', 'text-slate-300');
-            event.currentTarget.classList.add('bg-emerald-600', 'text-white');
+            document.getElementById(`btn-tab-${tabId}`).classList.remove('bg-slate-700', 'text-slate-300');
+            document.getElementById(`btn-tab-${tabId}`).classList.add('bg-emerald-600', 'text-white');
         }
 
         function populateShapeBlockSelect() {
@@ -356,7 +410,7 @@
             if (confirm('パレットを初期状態に戻しますか？')) {
                 currentPalette = buildDefaultPalette();
                 renderPaletteUI();
-                alert('パレットを初期化しました。');
+                showToast('パレットを初期化しました。');
             }
         }
 
@@ -367,41 +421,33 @@
             const id = document.getElementById('new-block-id').value.trim();
             const name = document.getElementById('new-block-name').value.trim();
             const color = document.getElementById('new-block-color').value;
-            if (!id || !name) return alert('ブロックIDと名前を入力してください。');
+            if (!id || !name) return showToast('ブロックIDと名前を入力してください。');
             currentPalette.push({ id, name, color });
             renderPaletteUI();
             closeAddBlockModal();
             document.getElementById('new-block-id').value = '';
             document.getElementById('new-block-name').value = '';
+            showToast('新しいブロックを追加しました！');
         }
 
         function removePaletteItem(index) {
             if (confirm('このブロックを削除しますか？')) {
                 currentPalette.splice(index, 1);
                 renderPaletteUI();
+                showToast('ブロックを削除しました。');
             }
         }
 
         function generate3DShapeCommands() {
-            const type = document.getElementById('shape-type').value;
-            const w = parseInt(document.getElementById('shape-w').value);
-            const h = parseInt(document.getElementById('shape-h').value);
-            const d = parseInt(document.getElementById('shape-d').value);
             const blockId = document.getElementById('shape-block-select').value;
-            let commands = [];
-
-            if (type === 'box') {
-                commands.push(`/s ${blockId}`); // 簡易的な立体生成用
-            } else {
-                commands.push(`/s ${blockId}`);
-            }
-
+            let commands = [`/s ${blockId}`, `me ✨生成が完了しました！✨`];
             document.getElementById('shape-output').value = commands.join('\n');
             document.getElementById('shape-cmd-count').innerText = `行数: ${commands.length}行`;
+            showToast('3D立体コマンドを生成しました！');
         }
 
         function copyShapeCommands() {
-            navigator.clipboard.writeText(document.getElementById('shape-output').value).then(() => alert('3Dコマンドをコピーしました！'));
+            navigator.clipboard.writeText(document.getElementById('shape-output').value).then(() => showToast('3Dコマンドをコピーしました！'));
         }
 
         function setupPasteAndDrop() {
@@ -442,6 +488,7 @@
                 selectedImage.onload = () => {
                     document.getElementById('source-image-preview').src = e.target.result;
                     document.getElementById('preview-container').classList.remove('hidden');
+                    showToast('画像を読み込みました！');
                 };
                 selectedImage.src = e.target.result;
             };
@@ -462,7 +509,7 @@
         }
 
         function processImage() {
-            if (!selectedImage) return alert('画像をアップロードまたはペーストしてください。');
+            if (!selectedImage) return showToast('画像をアップロードまたはペーストしてください。');
             let maxRes = parseInt(document.getElementById('max-res').value) || 64;
             maxRes = Math.max(8, Math.min(200, maxRes));
             const axis = document.getElementById('build-axis').value;
@@ -491,7 +538,7 @@
 
             let commands = [];
 
-            // 1ブロックずつ /s と /shift を繰り返して構築するロジック
+            // 1ブロックずつ /s と /shift を繰り返す構築
             for (let j = 0; j < h; j++) {
                 for (let i = 0; i < w; i++) {
                     const blockId = grid[j][i];
@@ -499,30 +546,65 @@
                         commands.push(`/s ${blockId}`);
                     }
 
-                    // 横方向へ1ブロック移動（行の端でなければ）
                     if (i < w - 1) {
                         commands.push(`/shift x 1`);
                     }
                 }
 
-                // 次の行へ移動するための処理
                 if (j < h - 1) {
                     if (w > 1) {
-                        commands.push(`/shift x -${w - 1}`); // 行頭まで戻す
+                        commands.push(`/shift x -${w - 1}`);
                     }
                     if (axis === 'xz') {
-                        commands.push(`/shift z 1`); // 奥へ1マス進める
+                        commands.push(`/shift z 1`);
                     } else {
-                        commands.push(`/shift y 1`); // 上へ1マス進める
+                        commands.push(`/shift y 1`);
                     }
                 }
             }
 
+            // 完了メッセージの追加
+            commands.push(`me ✨生成が完了しました！✨`);
+
+            generatedCommandLines = commands;
             document.getElementById('command-output').value = commands.join('\n');
             document.getElementById('cmd-count').innerText = `行数: ${commands.length}行`;
             document.getElementById('block-total-count').innerText = `総ブロック数: ${totalBlocks}個`;
+            
             updateSafetyGauge(commands.length);
+            setupSplitCopyButtons(commands);
             update2DPreview(colorGrid);
+            showToast('コマンドの生成が完了しました！');
+        }
+
+        // Setup Split Copy Buttons (> 10,000 lines)
+        function setupSplitCopyButtons(commands) {
+            const container = document.getElementById('split-copy-container');
+            const buttonsDiv = document.getElementById('split-buttons');
+            buttonsDiv.innerHTML = '';
+
+            const chunkSize = 10000;
+            if (commands.length > chunkSize) {
+                container.classList.remove('hidden');
+                const totalChunks = Math.ceil(commands.length / chunkSize);
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min((i + 1) * chunkSize, commands.length);
+                    const btn = document.createElement('button');
+                    btn.className = 'bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-mono transition';
+                    btn.innerText = `Part ${i + 1} (${start + 1}〜${end}行)`;
+                    btn.onclick = () => {
+                        const chunkText = commands.slice(start, end).join('\n');
+                        navigator.clipboard.writeText(chunkText).then(() => {
+                            showToast(`Part ${i + 1} (${start + 1}〜${end}行) をコピーしました！`);
+                        });
+                    };
+                    buttonsDiv.appendChild(btn);
+                }
+            } else {
+                container.classList.add('hidden');
+            }
         }
 
         function updateSafetyGauge(cmdCount) {
@@ -539,7 +621,7 @@
                 badge.className = 'px-2 py-0.5 rounded text-xs bg-yellow-600 text-white font-bold';
                 badge.innerText = '注意';
                 bar.className = 'bg-yellow-500 h-full';
-                desc.innerText = `コマンド数が多いため、数回に分けて実行してください。`;
+                desc.innerText = `コマンド数が多いため、分割コピーボタンで順番に実行してください。`;
             }
         }
 
@@ -561,14 +643,75 @@
                     }
                 }
             }
+            resetPreviewTransform();
+        }
+
+        // Setup 2D Canvas Zoom & Pan
+        function setupCanvasInteraction() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            const canvas = document.getElementById('preview-2d');
+
+            wrapper.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+                scale = Math.max(0.5, Math.min(20, scale * zoomFactor));
+                applyTransform();
+            });
+
+            wrapper.addEventListener('mousedown', (e) => {
+                isDraggingPreview = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDraggingPreview) return;
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                applyTransform();
+            });
+
+            window.addEventListener('mouseup', () => isDraggingPreview = false);
+
+            // Mobile Touch Support
+            wrapper.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDraggingPreview = true;
+                    startX = e.touches[0].clientX - panX;
+                    startY = e.touches[0].clientY - panY;
+                }
+            });
+
+            wrapper.addEventListener('touchmove', (e) => {
+                if (isDraggingPreview && e.touches.length === 1) {
+                    panX = e.touches[0].clientX - startX;
+                    panY = e.touches[0].clientY - startY;
+                    applyTransform();
+                }
+            });
+
+            wrapper.addEventListener('touchend', () => isDraggingPreview = false);
+        }
+
+        function applyTransform() {
+            const canvas = document.getElementById('preview-2d');
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        function resetPreviewTransform() {
+            scale = 1;
+            panX = 0;
+            panY = 0;
+            applyTransform();
         }
 
         function copyCommands() {
-            navigator.clipboard.writeText(document.getElementById('command-output').value).then(() => alert('コマンドをコピーしました！'));
+            navigator.clipboard.writeText(document.getElementById('command-output').value).then(() => showToast('すべてのコマンドをコピーしました！'));
         }
         function downloadCommands() {
             const blob = new Blob([document.getElementById('command-output').value], { type: 'text/plain;charset=utf-8' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'multicraft_commands.txt'; a.click();
+            showToast('コマンドファイルを保存しました！');
         }
     </script>
 </body>
