@@ -6,8 +6,6 @@
     <title>MultiCraft WorldEdit 建築コマンド自動生成ツール</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js for 3D Preview -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; }
         .tab-content { display: none; }
@@ -106,17 +104,19 @@
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden flex flex-col">
                         <div class="bg-slate-750 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
-                            <h3 class="text-sm font-semibold text-emerald-400">3D建築プレビュー</h3>
-                            <span class="text-xs text-slate-400">マウスドラッグで回転 / スクロールで拡大縮小</span>
+                            <h3 class="text-sm font-semibold text-emerald-400">2D建築固定プレビュー</h3>
+                            <span class="text-xs text-slate-400">変換されたブロック構成の平面プレビュー</span>
                         </div>
-                        <div id="canvas-container" class="w-full h-72 bg-slate-950 relative"></div>
+                        <div class="w-full h-72 bg-slate-950 flex items-center justify-center p-4">
+                            <canvas id="preview-2d" class="max-w-full max-h-full object-contain border border-slate-800 shadow"></canvas>
+                        </div>
                     </div>
 
                     <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg space-y-4">
                         <div class="flex justify-between items-center flex-wrap gap-2">
                             <div>
                                 <h3 class="text-base font-semibold text-emerald-400">生成されたコマンド</h3>
-                                <p class="text-xs text-slate-400">`/1 X Y Z`, `/2 X Y Z`, `/s` による正確な絶対座標コード</p>
+                                <p class="text-xs text-slate-400">`/pos1 X Y Z`, `/pos2 X Y Z`, `/s` による正確な絶対座標コード</p>
                             </div>
                             <div class="flex gap-2">
                                 <button onclick="copyCommands()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">📋 コピー</button>
@@ -182,7 +182,7 @@
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg space-y-4 lg:col-span-2 flex flex-col justify-between">
                     <div>
                         <h3 class="text-base font-semibold text-emerald-400">生成された3D立体コマンド</h3>
-                        <p class="text-xs text-slate-400">`/1`, `/2`, `/s` を活用した立体構築コード</p>
+                        <p class="text-xs text-slate-400">`/pos1`, `/pos2`, `/s` を活用した立体構築コード</p>
                     </div>
                     <textarea id="shape-output" readonly class="w-full h-64 bg-slate-900 border border-slate-700 rounded-lg p-3 font-mono text-xs text-emerald-300 outline-none resize-none" placeholder="ここに生成された3Dコマンドが表示されます..."></textarea>
                     <div class="flex justify-between items-center">
@@ -321,12 +321,10 @@
 
         let currentPalette = JSON.parse(localStorage.getItem('multicraft_palette')) || buildDefaultPalette();
         let selectedImage = null;
-        let scene, camera, renderer, voxelGroup;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderPaletteUI();
             populateShapeBlockSelect();
-            initThreeJS();
             setupPasteAndDrop();
         });
 
@@ -339,7 +337,6 @@
             document.getElementById(tabId).classList.add('active');
             event.currentTarget.classList.remove('bg-slate-700', 'text-slate-300');
             event.currentTarget.classList.add('bg-emerald-600', 'text-white');
-            if (tabId === 'generator' && renderer) onWindowResize();
         }
 
         function populateShapeBlockSelect() {
@@ -414,23 +411,23 @@
             let commands = [];
 
             if (type === 'box') {
-                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
+                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
             } else if (type === 'hollow_box') {
-                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
+                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/s ${blockId}`);
                 if (w > 2 && h > 2 && d > 2) {
-                    commands.push(`/1 1 1 1`); commands.push(`/2 ${w-2} ${h-2} ${d-2}`); commands.push(`/s air`);
+                    commands.push(`/pos1 1 1 1`); commands.push(`/pos2 ${w-2} ${h-2} ${d-2}`); commands.push(`/s air`);
                 }
             } else if (type === 'sphere') {
-                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/sphere ${blockId}`);
+                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/sphere ${blockId}`);
             } else if (type === 'cylinder') {
-                commands.push(`/1 0 0 0`); commands.push(`/2 ${w-1} ${h-1} ${d-1}`); commands.push(`/cyl ${blockId}`);
+                commands.push(`/pos1 0 0 0`); commands.push(`/pos2 ${w-1} ${h-1} ${d-1}`); commands.push(`/cyl ${blockId}`);
             } else if (type === 'pyramid') {
                 for (let y = 0; y < h; y++) {
                     let sw = Math.max(1, w - Math.floor(y * (w / h)));
                     let sd = Math.max(1, d - Math.floor(y * (d / h)));
                     let off = Math.floor((w - sw) / 2);
-                    commands.push(`/1 ${off} ${y} ${off}`);
-                    commands.push(`/2 ${off + sw - 1} ${y} ${off + sd - 1}`);
+                    commands.push(`/pos1 ${off} ${y} ${off}`);
+                    commands.push(`/pos2 ${off + sw - 1} ${y} ${off + sd - 1}`);
                     commands.push(`/s ${blockId}`);
                 }
             }
@@ -485,45 +482,6 @@
                 selectedImage.src = e.target.result;
             };
             reader.readAsDataURL(file);
-        }
-
-        function initThreeJS() {
-            const container = document.getElementById('canvas-container');
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x090d16);
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.set(50, 50, 50);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            container.appendChild(renderer.domElement);
-            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-            const dl = new THREE.DirectionalLight(0xffffff, 0.8);
-            dl.position.set(20, 40, 20);
-            scene.add(dl);
-            voxelGroup = new THREE.Group();
-            scene.add(voxelGroup);
-
-            let isDragging = false, prev = {x:0, y:0};
-            container.addEventListener('mousedown', (e) => { isDragging = true; prev = {x:e.clientX, y:e.clientY}; });
-            window.addEventListener('mouseup', () => isDragging = false);
-            container.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                voxelGroup.rotation.y += (e.clientX - prev.x) * 0.01;
-                voxelGroup.rotation.x += (e.clientY - prev.y) * 0.01;
-                prev = {x:e.clientX, y:e.clientY};
-            });
-            container.addEventListener('wheel', (e) => {
-                camera.position.z = Math.max(10, Math.min(300, camera.position.z + e.deltaY * 0.05));
-            });
-            animate();
-        }
-
-        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
-        function onWindowResize() {
-            const c = document.getElementById('canvas-container');
-            camera.aspect = c.clientWidth / c.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(c.clientWidth, c.clientHeight);
         }
 
         function findClosestBlock(r, g, b) {
@@ -595,8 +553,8 @@
                         const y2 = origY;
                         const z2 = origZ + y + rh - 1;
 
-                        commands.push(`/1 ${x1} ${y1} ${z1}`);
-                        commands.push(`/2 ${x2} ${y2} ${z2}`);
+                        commands.push(`/pos1 ${x1} ${y1} ${z1}`);
+                        commands.push(`/pos2 ${x2} ${y2} ${z2}`);
                         commands.push(`/s ${blockId}`);
                     } else {
                         const x1 = origX + x;
@@ -606,8 +564,8 @@
                         const y2 = origY + (h - 1 - y);
                         const z2 = origZ;
 
-                        commands.push(`/1 ${x1} ${y1} ${z1}`);
-                        commands.push(`/2 ${x2} ${y2} ${z2}`);
+                        commands.push(`/pos1 ${x1} ${y1} ${z1}`);
+                        commands.push(`/pos2 ${x2} ${y2} ${z2}`);
                         commands.push(`/s ${blockId}`);
                     }
                 }
@@ -617,7 +575,7 @@
             document.getElementById('cmd-count').innerText = `行数: ${commands.length}行`;
             document.getElementById('block-total-count').innerText = `総ブロック数: ${totalBlocks}個`;
             updateSafetyGauge(commands.length);
-            update3DPreview(colorGrid, axis);
+            update2DPreview(colorGrid);
         }
 
         function updateSafetyGauge(cmdCount) {
@@ -638,19 +596,22 @@
             }
         }
 
-        function update3DPreview(colorGrid, axis) {
-            while (voxelGroup.children.length > 0) voxelGroup.remove(voxelGroup.children[0]);
-            const h = colorGrid.length, w = colorGrid[0].length;
-            const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
-            const ox = w / 2, oz = h / 2;
+        function update2DPreview(colorGrid) {
+            const canvas = document.getElementById('preview-2d');
+            const h = colorGrid.length;
+            const w = colorGrid[0].length;
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, w, h);
+
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
                     const col = colorGrid[y][x];
-                    if (!col) continue;
-                    const cube = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: col }));
-                    if (axis === 'xz') cube.position.set(x - ox, 0.5, y - oz);
-                    else cube.position.set(x - ox, y + 0.5, 0);
-                    voxelGroup.add(cube);
+                    if (col) {
+                        ctx.fillStyle = col;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
                 }
             }
         }
