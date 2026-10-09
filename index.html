@@ -307,7 +307,7 @@
                 { id: 'straw', name: '藁', color: '#d4a373' },
                 { id: 'bamboo_wood', name: '竹材', color: '#ccd5ae' },
                 { id: 'cement', name: 'セメント', color: '#95a5a6' },
-                { id: 'concrete', name: 'コンクリート', color: '#34495e' },
+                { id: 'concrete', name: 'コンクリート', color: '#f0f0f0' },
                 { id: 'hardened_clay', name: '堅焼き粘土', color: '#a3704c' }
             ];
 
@@ -317,10 +317,12 @@
         // 初期化＆既存のLocalStorage内データのマイグレーション処理
         let currentPalette = JSON.parse(localStorage.getItem('multicraft_palette')) || buildDefaultPalette();
         
-        // 旧ID(default:jungle_wood等)がローカルストレージに残っている場合は自動でjungletreeへ置換し重複を統合
         currentPalette = currentPalette.map(item => {
             if (item.id === 'default:jungle_wood' || item.id === 'default:jungle_tree') {
                 return { ...item, id: 'jungletree' };
+            }
+            if (item.id === 'concrete') {
+                return { ...item, color: '#f0f0f0' };
             }
             return item;
         });
